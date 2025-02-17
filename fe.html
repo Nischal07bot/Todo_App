@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo App</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        input, button { margin: 5px; padding: 8px; }
+        #todos { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h2>Todo App</h2>
+    <div id="auth-container">
+        <div id="signup-section">
+            <h3>Sign Up</h3>
+            <input type="text" id="signup-name" placeholder="Name">
+            <input type="email" id="signup-email" placeholder="Email">
+            <input type="password" id="signup-password" placeholder="Password">
+            <button onclick="signup()">Sign Up</button>
+        </div>
+        
+        <div id="signin-section">
+            <h3>Sign In</h3>
+            <input type="email" id="signin-email" placeholder="Email">
+            <input type="password" id="signin-password" placeholder="Password">
+            <button onclick="signin()">Sign In</button>
+        </div>
+    </div>
+    
+    <div id="logout-section" style="display: none;">
+        <button onclick="logout()">Logout</button>
+    </div>
+    
+    <div>
+        <h3>Add Todo</h3>
+        <input type="text" id="todo-title" placeholder="Todo Title">
+        <button onclick="addTodo()">Add Todo</button>
+    </div>
+    
+    <div>
+        <h3>Your Todos</h3>
+        <button onclick="fetchTodos()">Load Todos</button>
+        <ul id="todos"></ul>
+    </div>
+    
+    <script>
+        let token = "";
+        
+        async function signup() {
+            const name = document.getElementById("signup-name").value;
+            const email = document.getElementById("signup-email").value;
+            const password = document.getElementById("signup-password").value;
+        
+            try {
+                const response = await axios.post("http://localhost:3000/signup", { name, email, password });
+                alert(response.data.message);
+            } catch (error) {
+                if (error.response && error.response.data.errors) {
+                    let errorMessages = error.response.data.errors.map(err => err.message).join("\n");
+                    alert("Validation Errors:\n" + errorMessages);
+                } else {
+                    alert("Error: " + error.response.data.message);
+                }
+            }
+        }
+        
+        
+        async function signin() {
+            const email = document.getElementById("signin-email").value;
+            const password = document.getElementById("signin-password").value;
+            
+            try {
+                const response = await axios.post("http://localhost:3000/signin", { email, password });
+                token = response.data.token;
+                alert("Sign in successful");
+                document.getElementById("auth-container").style.display = "none";
+                document.getElementById("logout-section").style.display = "block";
+            } catch (error) {
+                alert("Error: " + error.response.data.message);
+            }
+        }
+        
+        function logout() {
+            token = "";
+            alert("Logged out successfully");
+            document.getElementById("auth-container").style.display = "block";
+            document.getElementById("logout-section").style.display = "none";
+        }
+        
+        async function addTodo() {
+            if (!token) return alert("Please sign in first!");
+            const title = document.getElementById("todo-title").value;
+            
+            try {
+                const response = await axios.post("http://localhost:3000/todo", { tittle: title, done: false }, {
+                    headers: { token }
+                });
+                alert(response.data.message);
+                fetchTodos();
+            } catch (error) {
+                alert("Error: " + error.response.data.message);
+            }
+        }
+        
+        async function fetchTodos() {
+            if (!token) return alert("Please sign in first!");
+            
+            try {
+                const response = await axios.get("http://localhost:3000/todos", {
+                    headers: { token }
+                });
+                const todosList = document.getElementById("todos");
+                todosList.innerHTML = "";
+                response.data.todos.forEach(todo => {
+                    const li = document.createElement("li");
+                    li.textContent = todo.tittle + (todo.done ? " ✔" : " ❌");
+                    const removeButton = document.createElement("button");
+                    removeButton.textContent = "Remove";
+                    removeButton.onclick = () => removeTodo(todo._id);
+                    li.appendChild(removeButton);
+                    todosList.appendChild(li);
+                });
+            } catch (error) {
+                alert("Error: " + error.response.data.message);
+            }
+        }
+        
+        async function removeTodo(todoId) {
+            if (!token) return alert("Please sign in first!");
+            
+            try {
+                await axios.delete(`http://localhost:3000/todo/${todoId}`, {
+                    headers: { token }
+                });
+                alert("Todo removed");
+                fetchTodos();
+            } catch (error) {
+                alert("Error: " + error.response.data.message);
+            }
+        }
+    </script>
+</body>
+</html>
